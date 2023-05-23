@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Radial - Step 1</title>
+  <link rel="stylesheet" type="text/css" href="../common/style.css">
+
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    attribute vec3 a_pos;
+    uniform vec2 u_screensize;
+    void main() {
+      gl_Position = vec4(a_pos.xy * u_screensize.x, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    #ifdef GL_ES
+      precision highp float;
+    #endif
+    uniform vec2 u_screensize;
+    uniform float u_time;
+
+    #define TWO_PI 6.28318530718
+    #define PULSE_WIDTH 0.05
+    #define SLOWDOWN 5.
+
+    // Simple impulse function using smoothstep
+    float impulse (float x, float center) {
+      return smoothstep(center - PULSE_WIDTH/2., center, x) - smoothstep(center, center + PULSE_WIDTH/2., x);
+    }
+
+    /**
+     * angle: ray angle [0,1]
+     * radius: pixel to draw's radius [0,~1]
+     * time: in [0,1]
+     */
+    float ray(float radius, float time) {
+      // Distance to eye 50 --> 1 over time
+      float distance = (1. - time) * 50. + 1.;
+      // For now, we always originate a "1" from the center
+      float pulsePosition = 1. / distance;
+      float outputColor = impulse(radius, pulsePosition);
+      return outputColor;
+    }
+
+    void main(void) {
+      // Normalize position to [-0.5, 0.5]
+      vec2 position = (gl_FragCoord.xy - u_screensize/2.0) / u_screensize.x;
+
+      float time = fract(u_time / SLOWDOWN);
+
+      // Find polar angle of current coord, quantized to DENSITY
+      float angle = atan(position.x, position.y) / TWO_PI;
+      float radius = length(position);
+
+      vec3 outCol = vec3(0.);
+
+      outCol += ray(radius, time);
+
+      // Convert intensity to a color
+      gl_FragColor = vec4(outCol, 1.0);
+    }
+  </script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const SCALE_FACTOR = 1.0;
+  </script>
+  <script src="../common/setup.js"></script>
+</body>
+</html>
