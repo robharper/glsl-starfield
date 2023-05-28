@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Radial - Step 1</title>
+  <link rel="stylesheet" type="text/css" href="./common/style.css">
+
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    attribute vec3 a_pos;
+    uniform vec2 u_screensize;
+    void main() {
+      gl_Position = vec4(a_pos.xy * u_screensize.x, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    #ifdef GL_ES
+      precision highp float;
+    #endif
+    uniform vec2 u_screensize;
+    uniform float u_time;
+
+    #define TWO_PI 6.28318530718
+    #define PULSE_WIDTH 0.00005
+    #define SLOWDOWN 4.
+    #define DENSITY 300.
+    #define MAX_DISTANCE 10.
+
+    // From https://gist.github.com/983/e170a24ae8eba2cd174f
+    vec3 hsv2rgb(vec3 c) {
+        vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+        vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+        return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+    }
+
+    // Gaussian curve
+    float impulse (float x, float center, float deviation) {
+      float ofs = x - center;
+      deviation *= PULSE_WIDTH;
+      float p = ofs < 0. ? deviation * 5. : deviation / 5.;
+      return exp(-1.0 * ofs*ofs/p);
+    }
+
+    // Cheap sin-fraction based random returns [0,1] and doesn't return 0 for input of 0
+    float random (float x) {
+      return fract(sin((x + .123) * 78.173) * 43758.1259);
+    }
+
+    /**
+     * angle: ray angle [0,1]
+     * radius: pixel to draw's radius [0,~1]
+     * time: in [0,1]
+     */
+    float ray(float randomDistance, float angleDeviation, float radius, float time) {
+      // Distance to eye 50 --> 1 over time
+      float distance = (1. - time) * 50. + 1.;
+      // Star should have a random position away from center
+      float position = randomDistance * MAX_DISTANCE + 0.01;
+      float pulsePosition = position / distance;
+      // Calculate an impulse function at the pulse position with impulse width proportional to the distance
+      float outputIntensity = impulse(radius, pulsePosition, 10. / distance);
+
+      // Attenuate with distance
+      outputIntensity *= smoothstep(50., 25., distance);
+
+      // Fade by distance from center angle
+      outputIntensity *= cos((angleDeviation) * DENSITY * TWO_PI / 2.);
+
+      return outputIntensity;
+    }
+
+    void main(void) {
+      // Normalize position to [-0.5, 0.5]
+      vec2 position = (gl_FragCoord.xy - u_screensize/2.0) / u_screensize.x;
+
+      float time = fract(u_time / SLOWDOWN);
+
+      // Find polar angle of current coord, quantized to DENSITY
+      float angle = atan(position.x, position.y) / TWO_PI;
+      float angleCenter = floor(angle * DENSITY + 0.5) / DENSITY;
+      float radius = length(position);
+
+      float rnd = random(angleCenter);
+
+      float starTime = fract(time + fract(rnd * 431.));
+
+      vec3 outCol = vec3(0.);
+
+      for (int i=0; i<3; i++) {
+        float starIntensity = ray(rnd, angle - angleCenter, radius, starTime);
+
+        float h = fract(rnd * 89.);
+        float s = fract(rnd * 471.);
+        float v = fract(rnd * 2397.);
+        vec3 starColor = hsv2rgb(vec3(h * 0.25, s * 0.6, v * 0.8 + 0.2));
+
+        outCol += starColor * starIntensity;
+
+        rnd = fract(rnd * 5143.);
+      }
+
+      // Convert intensity to a color
+      gl_FragColor = vec4(outCol, 1.0);
+    }
+  </script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const SCALE_FACTOR = 1.0;
+  </script>
+  <script src="./common/setup.js"></script>
+</body>
+</html>
