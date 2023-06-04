@@ -2,6 +2,12 @@ window.addEventListener('load', run, false);
 
 const scaleFactor = SCALE_FACTOR ?? 2;
 
+let glCanvas = null;
+let gl = null;
+let uScreenSize = null;
+let uTime = null;
+const vertexCount = 4;
+
 // Adapted from MDN
 function buildShaderProgram(shaderInfo) {
   const program = gl.createProgram();
@@ -47,8 +53,8 @@ function run() {
   const shaderProgram = buildShaderProgram(shaderSet);
   gl.useProgram(shaderProgram);
 
-  const uScreenSize = gl.getUniformLocation(shaderProgram, 'u_screensize');
-  const uTime = gl.getUniformLocation(shaderProgram, 'u_time');
+  uScreenSize = gl.getUniformLocation(shaderProgram, 'u_screensize');
+  uTime = gl.getUniformLocation(shaderProgram, 'u_time');
 
   const vertexArray = new Float32Array([
     1, 1, 0,
@@ -56,7 +62,6 @@ function run() {
     1, -1, 0,
     -1, -1, 0
   ]);
-  const vertexCount = vertexArray.length / 3;
 
   const vertexBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
@@ -64,23 +69,31 @@ function run() {
 
   const aPosition = gl.getAttribLocation(shaderProgram, 'a_pos');
   gl.enableVertexAttribArray(aPosition);
+  gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
 
-  function render() {
-    const [width, height] = [glCanvas.clientWidth/scaleFactor, glCanvas.clientHeight/scaleFactor];
-    if (glCanvas.width !== width || glCanvas.height !== height) {
-      glCanvas.width  = width;
-      glCanvas.height = height;
-    }
+  // Set initial size-based vars
+  const [width, height] = [glCanvas.clientWidth/scaleFactor, glCanvas.clientHeight/scaleFactor];
+  onResize(width, height);
+  render();
+}
 
-    gl.uniform2fv(uScreenSize, [width, height]);
-    gl.uniform1f(uTime, (performance.now() / 1000.0));
+// Called when the canvas size has changed and gl state needs to be updated
+function onResize(width, height) {
+  glCanvas.width  = width;
+  glCanvas.height = height;
+  gl.viewport(0, 0, width, height);
+  gl.uniform2fv(uScreenSize, [width, height]);
+}
 
-    gl.viewport(0, 0, width, height);
-    gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, 0, 0);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertexCount);
-
-    requestAnimationFrame(render);
+// Called every frame, renders the scene with updated
+function render() {
+  const [width, height] = [glCanvas.clientWidth/scaleFactor, glCanvas.clientHeight/scaleFactor];
+  if (glCanvas.width !== width || glCanvas.height !== height) {
+    onResize(width, height);
   }
 
-  render();
+  gl.uniform1f(uTime, (performance.now() / 1000.0));
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, vertexCount);
+
+  requestAnimationFrame(render);
 }
