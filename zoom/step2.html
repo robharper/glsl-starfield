@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Radial - Step 1</title>
+  <link rel="stylesheet" type="text/css" href="../common/style.css">
+
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    attribute vec3 a_pos;
+    uniform vec2 u_screensize;
+    void main() {
+      gl_Position = vec4(a_pos.xy * u_screensize.x, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    #ifdef GL_ES
+      precision highp float;
+    #endif
+    uniform vec2 u_screensize;
+    uniform float u_time;
+
+    #define STAR_QUANTIZE 1.
+    #define STAR_SPARSENESS 0.998
+    #define SPEED 0.15
+
+    float random1(vec2 x) {
+      return fract(sin(dot(x.xy / 1000., vec2(12.9898, 78.233))) * 43758.5453123);
+    }
+
+    void main() {
+      // Normalize center of screen to (0, 0)
+      vec2 st = (gl_FragCoord.xy - u_screensize/2.0) / STAR_QUANTIZE;
+
+      vec3 color = vec3(0.);
+      float t = u_time * SPEED;
+
+      for (float layer=0.; layer<1.; layer+=0.1) {
+        float zoom = 1.0 - fract(t + layer);
+        vec2 zoomedSt = st * zoom;
+
+        // Offset each layer by a different amount
+        float offset = mod((floor(t + layer) + layer), 37.) * 1296.98;
+
+        // Quantize pixels to create stars bigger than pixels
+        vec2 noiseCoord = floor(zoomedSt + 0.5);
+
+        // Generate noise value in [0,1] for our quantized location
+        float noise = random1(noiseCoord + offset);
+
+        // Stars exist where random noise number is > STAR_SPARSENESS
+        float pixelValue = smoothstep(STAR_SPARSENESS, 1.0, noise);
+
+        // Fade stars in from 1 --> 0.5, then out from 0.1 --> 0
+        float fade = smoothstep(0.0, 0.1, zoom) - smoothstep(0.3, 1.0, zoom);
+        pixelValue *= fade;
+
+        color += pixelValue;
+      }
+
+      gl_FragColor = vec4(color,1.0);
+    }
+  </script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const SCALE_FACTOR = 1.0;
+  </script>
+  <script src="../common/setup.js"></script>
+</body>
+</html>
