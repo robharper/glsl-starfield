@@ -7,7 +7,7 @@ I love 80s- and early 90s-era graphical effects. I remember being blown away the
 | Scene from Second Reality |
 
 
-OpenGL fragment shaders provide a fun way to get back into building some simple effects. Of course one can build incredible, mind-blowing effects in GLSL. I cannot, or at least I will not be doing that here. I'm going to build the simplest of effects: the basic starfield "warp" effect.
+OpenGL fragment shaders provide a fun way to get back into building some simple effects. Of course [one can build](https://iquilezles.org/articles/) incredible, [mind-blowing effects](https://www.shadertoy.com/view/ld3Gz2) in GLSL. I cannot, or at least I will not be doing that here. I'm going to build the simplest of effects: the basic starfield "warp" effect.
 
 ### What's in this repo
 In this repo I build a simple 80s/90s starfield effect in a few different ways. I enjoy teaching. I also find that I think deeper about what I'm building if I have to explain it to others. So rather than just build this simple effect, I decided to write up the steps I took as sort of a tutorial.
