@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Radial - Step 1</title>
+  <link rel="stylesheet" type="text/css" href="../common/style.css">
+
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    attribute vec3 a_pos;
+    uniform vec2 u_screensize;
+    void main() {
+      gl_Position = vec4(a_pos.xy * u_screensize.x, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    #ifdef GL_ES
+      precision highp float;
+    #endif
+
+    uniform vec2 u_screensize;
+    uniform float u_time;
+
+    #define STAR_QUANTIZE 8.0
+    #define STAR_SPARSENESS 0.993
+    #define SPEED 0.15
+    #define STAR_FALLOFF 45.
+
+    float random1(vec2 x) {
+      return fract(sin(dot(x.xy / 1000., vec2(12.9898, 78.233))) * 43758.5453123);
+    }
+
+    // From the Book of Shaders: https://thebookofshaders.com/12/
+    vec2 random2( vec2 p ) {
+      return fract(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3)))*43.5453);
+    }
+
+    /**
+     * Renders a star at location `gridCoord` returning pixel value assessed
+     * at `pixelCoord`. `noiseOfs` is used to offset the random number function,
+     * specifically to avoid rendering the same stars in each layer.
+     */
+    float renderStar(vec2 gridCoord, vec2 pixelCoord, float noiseOfs) {
+      vec2 starPosition = random2(gridCoord) + gridCoord;
+
+      // Generate noise value in [0,1] for our quantized location
+      float noise = random1(starPosition + noiseOfs);
+
+      // Stars exist where random noise number is > STAR_SPARSENESS
+      float starValue = smoothstep(STAR_SPARSENESS, 1.0, noise);
+
+      // Skip the rest of the calculations if no star in quadrant
+      if (starValue > 0.) {
+        // Normalize value to [0.5, 1.0]
+        starValue = starValue / 2. + 0.5;
+
+        // Calculate the distance from the star center to the pixel
+        float error = distance(starPosition, pixelCoord);
+
+        // Pixel brightness is inversely proportional to distance from star center
+        float pixelValue = starValue / (STAR_FALLOFF * error);
+
+        // Clamp to 1.0 to avoid over-saturation (distant stars getting full intensity)
+        // and smooth off falloff edges
+        return min(pixelValue, 1.) * smoothstep(1., 0.8, error);
+      }
+      return 0.;
+    }
+
+    void main() {
+      // Normalize center of screen to (0, 0)
+      vec2 st = (gl_FragCoord.xy - u_screensize/2.0) / STAR_QUANTIZE;
+
+      vec3 color = vec3(0.);
+      float t = u_time * SPEED;
+
+      for (float layer=0.0; layer<1.; layer+=0.1) {
+        float zoom = 1. - fract(t + layer);
+        vec2 zoomedSt = st * zoom;
+
+        // Quantize pixels to create stars bigger than pixels
+        vec2 gridCoord = floor(zoomedSt);
+
+        // Offset each layer by a different amount
+        float offset = mod((floor(t + layer) + layer), 37.) * 1296.98;
+
+        float star = 0.;
+        // Render contributions from 9 neighboring grid cells
+        for (int i=-1; i<=1; i++) {
+          for (int j=-1; j<=1; j++) {
+            star += renderStar(gridCoord + vec2(float(i), float(j)), zoomedSt, offset);
+          }
+        }
+
+        // Fade stars in from 1 --> 0.5
+        float fade = smoothstep(1.0, 0.5, zoom);
+        star *= fade;
+
+        /*
+        // Show grid for debugging
+        if (fract(zoomedSt).x < 0.1) {
+          color += vec3(1., 0., 0.);
+        }
+        if (fract(zoomedSt).y < 0.1) {
+          color += vec3(1., 0., 0.);
+        }
+        */
+
+        color += star;
+      }
+
+      gl_FragColor = vec4(color,1.0);
+    }
+  </script>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const SCALE_FACTOR = 2.0;
+  </script>
+  <script src="../common/setup.js"></script>
+</body>
+</html>
