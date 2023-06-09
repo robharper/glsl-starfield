@@ -29,3 +29,10 @@ I've explored two primary approaches:
 2. [Zoom](./zoom) - approach the effect using randomly rendered "layers" of stars that approach the camera using a zoom approach
 
 During this exercise I heavily relied on the excellent [Book of Shaders](https://thebookofshaders.com/) - highly recommend.
+
+## Running
+To run the demos just serve this directory with a local webserver, such as:
+```
+npx http-server .
+```
+...and open your browser, typically to http://localhost:8080
